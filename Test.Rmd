@@ -11,7 +11,7 @@ Load packages
 library(FinCal)
 ```
 SNET Cost Effect Analysis (CEA)
-Need to simluate the number of people trained and then an approximate number of people that they will serve.  
+Need to simluate the number of people trained and then an approximate number of people  
 ```{r}
 nTrainedSamp = c(10:20)
 nTrained = sample(nTrainedSamp, 1) 
