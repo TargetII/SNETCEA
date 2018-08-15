@@ -94,15 +94,15 @@ for(i in 1:length(id)){
 }
 benefitsWagesAttempt = sum(benefitsWagesAttempt); benefitsWagesAttempt
 ```
-Need benefits for sucide attempts now just wage losses for one day of work
-
-For medical costs, assume they are drawn from a normal distribution with mean of $30,000
+Use the Tennessee 2016 doucment to seperate by gender.   
 
 Then mulitply the medical costs for the number of people to get medical costs savings per therapist
 
 Served is per year so it is fine to rep the medical costs saved over the years the client is working.
+
+So 
 ```{r}
-medicalCostsRate = round(rnorm(mean = 30000, sd = 1000, n = length(id)),2)
+medicalCostsRate = round(rnorm(mean = 31248, sd = 1000, n = length(id)),2)
 medicalCostsRate = round(medicalCosts*served,2)
 medicalCostsRate
 
