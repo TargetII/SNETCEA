@@ -11,16 +11,28 @@ Load packages
 library(FinCal)
 ```
 SNET Cost Effect Analysis (CEA)
-Need to simluate the number of people trained and then an approximate number of people  
+Need to simluate the number of people trained and then an approximate number of people 
+
+If I have gender then I can break it down by gender when allocating the medical costs.
+
+I want to get a sample of 1:n for each clinican for the number of clients they served.  Then I want to sample for each row 1:n then that will be the number of males the rest will be females
+
+Somehow get the sample that I am drawing from from 1:served[[i]]
+
+Or I just create two samples one for males and the other females
 ```{r}
 nTrainedSamp = c(10:20)
 nTrained = sample(nTrainedSamp, 1) 
 id = 1:nTrained[1]
-nServedSamp = c(10:30)
+nServedSamp = c(5:15)
 nServed = sample(nServedSamp, 1)
-served = rep(sample(nServedSamp, length(id)))
-costDat = data.frame(id = id, served = served)
-head(costDat)
+maleServed = rep(sample(nServedSamp, length(id), replace = TRUE))
+femaleServed = rep(sample(nServedSamp, length(id), replace = TRUE))
+totalServed = maleServed + femaleServed
+costDat = data.frame(id = id, maleServed = maleServed, femaleServed = femaleServed, totalServed)
+
+dim(costDat)
+
 ```
 Now I am trying to estimate the reductions in sucicde rates and attempts.  Just go with 1% for rates and 5% for attempts and sample them from a uniform distribution.
 ```{r}
@@ -39,8 +51,8 @@ sucAttempt
 ```
 I want to take the number of people served times the suc rate and suc attempt and those will be my reductions.
 ```{r}
-reductSucRate = costDat$served*sucRate
-reductSucAttempt = costDat$served*sucAttempt
+reductSucRate = costDat$totalServed*sucRate
+reductSucAttempt = costDat$totalServed*sucAttempt
 ```
 Then I want to randomly sample the time horizon for each clincian
 This is the time horizon for the number of clients being served
@@ -48,7 +60,7 @@ These numbers are from the Rand study.
 ```{r}
 timeClientsSample = c(3:14)
 timeClients = rep(sample(timeSample, length(id), replace = TRUE))
-timeClients = as.vector(time)
+timeClients = as.vector(timeClients)
 ```
 Now we need to estimate the medical costs 
 We will need to do something above, because all the time horizons are different.
@@ -94,34 +106,35 @@ for(i in 1:length(id)){
 }
 benefitsWagesAttempt = sum(benefitsWagesAttempt); benefitsWagesAttempt
 ```
-Need benefits for sucide attempts now just wage losses for one day of work
+Use the Tennessee 2016 doucment to seperate by gender.   
 
-For medical costs, assume they are drawn from a normal distribution with mean of $30,000
-
-Then mulitply the medical costs for the number of people to get medical costs savings per therapist
+Then mulitply the medical costs for the number of people to get medical costs savings per therapist.  I think we just get the medical costs for attempt and assume 
 
 Served is per year so it is fine to rep the medical costs saved over the years the client is working.
+
+So we want to split this up by men and women.  
 ```{r}
-medicalCostsRate = round(rnorm(mean = 30000, sd = 1000, n = length(id)),2)
-medicalCostsRate = round(medicalCosts*served,2)
-medicalCostsRate
+medicalCostsMen = round(rnorm(mean = 31248, sd = 1000, n = length(id)),2)
+medicalCostsMen = round(medicalCosts*costDat$maleServed,2)
+length(medicalCostsMen)
+length(timeClients)
 
-benefitsMedicalRate = NULL
+benefitsMedicalMen = NULL
 for(i in 1:length(id)){
-  benefitsMedicalRate[[i]] = npv(r = .03, rep(medicalCostsRate[[i]], timeClients[[i]]))
+  benefitsMedicalMen[[i]] = npv(r = .03, rep(medicalCostsMen[[i]], timeClients[[i]]))
+}
+benefitsMedicalMen = sum(benefitsMedicalMen); benefitsMedicalMen
+
+medicalCostsWomen  = round(rnorm(mean = 5000, sd = 1000, n = length(id)),2)
+
+benefitsMedicalWomen = NULL
+for(i in 1:length(id)){
+  benefitsMedicalWomen[[i]] = npv(r = .03, rep(medicalCostsWomen[[i]], timeClients[[i]]))
 }
 benefitsMedicalRate = sum(benefitsMedicalRate); benefitsMedicalRate
 
-medicalCostsAttempt = round(rnorm(mean = 5000, sd = 1000, n = length(id)),2)
 
-benefitsMedicalAttempt = NULL
-for(i in 1:length(id)){
-  benefitsMedicalAttempt[[i]] = npv(r = .03, rep(medicalCostsAttempt[[i]], timeClients[[i]]))
-}
-benefitsMedicalRate = sum(benefitsMedicalRate); benefitsMedicalRate
-
-
-totalBenefits = sum(benefitsWagesRate, benefitsWagesAttempt, benefitsMedicalAttempt, benefitsMedicalRate)
+totalBenefits = sum(benefitsWagesRate, benefitsWagesWomen, benefitsMedicalWomen, benefitsMedicalRate)
 ```
 So now get the program costs.  Assume a therapists makes about $50,000
 So we have length(id) therapists, then they make distibution around $50,000 for timeClient
