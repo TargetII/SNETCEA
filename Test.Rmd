@@ -11,139 +11,141 @@ Load packages
 library(FinCal)
 ```
 SNET Cost Effect Analysis (CEA)
-Need to simluate the number of people trained and then an approximate number of people  
+Need to simluate the number of people trained and then an approximate number of people 
+
+If I have gender then I can break it down by gender when allocating the medical costs.
+
+I want to get a sample of 1:n for each clinican for the number of clients they served.  Then I want to sample for each row 1:n then that will be the number of males the rest will be females
+
+Somehow get the sample that I am drawing from from 1:served[[i]]
+
+Or I just create two samples one for males and the other females
 ```{r}
+rm(list=ls())
+BCAdatGen = function(){
+rm(list=ls())
 nTrainedSamp = c(10:20)
 nTrained = sample(nTrainedSamp, 1) 
 id = 1:nTrained[1]
-nServedSamp = c(10:30)
+nServedSamp = c(5:15)
 nServed = sample(nServedSamp, 1)
-served = rep(sample(nServedSamp, length(id)))
-costDat = data.frame(id = id, served = served)
-head(costDat)
-```
-Now I am trying to estimate the reductions in sucicde rates and attempts.  Just go with 1% for rates and 5% for attempts and sample them from a uniform distribution.
-```{r}
-set.seed(123)
+maleServed = rep(sample(nServedSamp, length(id), replace = TRUE))
+femaleServed = rep(sample(nServedSamp, length(id), replace = TRUE))
+totalServed = maleServed + femaleServed
+costDat = data.frame(id = id, maleServed = maleServed, femaleServed = femaleServed, totalServed)
+
+#Now I am trying to estimate the reductions in sucicde rates and attempts.  Just go with 1% for rates and 5% for attempts and sample them from a uniform distribution.
 sucRate <- seq(.01, .05, by = .001) 
 for(i in sucRate) { 
 } 
 sucRate = sample(sucRate, 1)
-sucRate
+
 
 sucAttempt <- seq(.01, .1, by = 0.005) 
 for(i in sucAttempt) { 
 } 
 sucAttempt = sample(sucAttempt, 1)
-sucAttempt
-```
-I want to take the number of people served times the suc rate and suc attempt and those will be my reductions.
-```{r}
-reductSucRate = costDat$served*sucRate
-reductSucAttempt = costDat$served*sucAttempt
-```
-Then I want to randomly sample the time horizon for each clincian
-This is the time horizon for the number of clients being served
-These numbers are from the Rand study.
-```{r}
-timeClientsSample = c(3:14)
-timeClients = rep(sample(timeSample, length(id), replace = TRUE))
-timeClients = as.vector(time)
-```
-Now we need to estimate the medical costs 
-We will need to do something above, because all the time horizons are different.
-We are looking at lost wages due to death, which can be from $0 to $50000 and lost wages for attempt which is one day of the year so $0 to $50000 / 365.   
 
-For lost wages per year, need to figure out how to increase that amount over time.
-May need to create a sample for each person
-```{r}
+
+#I want to take the number of people served times the suc rate and suc attempt and those will be my reductions.
+reductSucRate = costDat$totalServed*sucRate
+reductSucAttempt = costDat$totalServed*sucAttempt
+
+#Then I want to randomly sample the time horizon for each clincian
+#This is the time horizon for the number of clients being served
+#These numbers are from the Rand study.
+timeClientsSample = c(3:14)
+timeClients = rep(sample(timeClientsSample, length(id), replace = TRUE))
+timeClients = as.vector(timeClients)
+
+# Now we need to estimate the medical costs 
+# We will need to do something above, because all the time horizons are different.
+# We are looking at lost wages due to death, which can be from $0 to $50000 and lost wages for attempt which is one day of the year so $0 to $50000 / 365.   
+# 
+# For lost wages per year, need to figure out how to increase that amount over time.
+# May need to create a sample for each person
 wagesPerYearLostSamp = c(0:50000)
 wagesPerYearLost = rep(sample(wagesPerYearLostSamp, length(id)), replace = TRUE)
 wagesPerYearLost = wagesPerYearLost*reductSucRate
 wagesPerYearLost = as.vector(wagesPerYearLost)
-wagesPerYearLost
+
 
 wagesDayLostSamp = round(c(0:50000/365),2)
 wagesDayLost = rep(sample(wagesDayLostSamp, length(id)), replace = TRUE)
 wagesDayLost = wagesDayLost*reductSucAttempt
 wagesDayLost = as.vector(wagesDayLost)
-```
-Assume that we are working with adults who range in age from 18 to 65.  
-Then get the differnece between the age and 65 and that is the number years for the lost wages
-```{r}
-set.seed(123)
-timeWagesSamp = c(18:65)
+
+
+# Assume that we are working with adults who range in age from 18 to 64, not 65 because that can produce zeros.  
+# Then get the differnece between the age and 65 and that is the number years for the lost wages
+timeWagesSamp = c(18:63)
 timeWages = sample(timeWagesSamp, length(id), replace = TRUE)
 timeWages = 65-timeWages
-timeWages
-```
-Now we need to wages to rep for the length of time 
-Because I want the wages to be the same for each time point
 
-If we have their actual wages, do we need to discount for demographics and or add in an unemployment factor?
-```{r}
+
+# Now we need to wages to rep for the length of time 
+# Because I want the wages to be the same for each time point
+# If we have their actual wages, do we need to discount for demographics and or add in an unemployment factor?
 benefitsWagesRate = NULL
 for(i in 1:length(id)){
   benefitsWagesRate[[i]] = npv(r = .03, rep(wagesPerYearLost[[i]], timeWages[[i]]))
 }
-benefitsWagesRate = sum(benefitsWagesRate); benefitsWagesRate
+benefitsWagesRate = sum(benefitsWagesRate)
 
 benefitsWagesAttempt = NULL
 for(i in 1:length(id)){
   benefitsWagesAttempt[[i]] = npv(r = .03, rep(wagesDayLost[[i]], timeWages[[i]]))
 }
-benefitsWagesAttempt = sum(benefitsWagesAttempt); benefitsWagesAttempt
-```
-Need benefits for sucide attempts now just wage losses for one day of work
+benefitsWagesAttempt = sum(benefitsWagesAttempt)
 
-For medical costs, assume they are drawn from a normal distribution with mean of $30,000
+# Use the Tennessee 2016 doucment to seperate by gender.   
+# Then mulitply the medical costs for the number of people to get medical costs savings per therapist.  I think we just get the medical costs for attempt and assume 
+# Served is per year so it is fine to rep the medical costs saved over the years the client is working.
+# So we want to split this up by men and women.  
+medicalCostsMen = round(rnorm(mean = 42490, sd = 1000, n = length(id)),2)
+medicalCostsMen = round(medicalCostsMen*costDat$maleServed,2)
 
-Then mulitply the medical costs for the number of people to get medical costs savings per therapist
-
-Served is per year so it is fine to rep the medical costs saved over the years the client is working.
-```{r}
-medicalCostsRate = round(rnorm(mean = 30000, sd = 1000, n = length(id)),2)
-medicalCostsRate = round(medicalCosts*served,2)
-medicalCostsRate
-
-benefitsMedicalRate = NULL
+benefitsMedicalMen = NULL
 for(i in 1:length(id)){
-  benefitsMedicalRate[[i]] = npv(r = .03, rep(medicalCostsRate[[i]], timeClients[[i]]))
+  benefitsMedicalMen[[i]] = npv(r = .03, rep(medicalCostsMen[[i]], timeClients[[i]]))
 }
-benefitsMedicalRate = sum(benefitsMedicalRate); benefitsMedicalRate
+benefitsMedicalMen = sum(benefitsMedicalMen)
 
-medicalCostsAttempt = round(rnorm(mean = 5000, sd = 1000, n = length(id)),2)
-
-benefitsMedicalAttempt = NULL
+medicalCostsWomen  = round(rnorm(mean = 30388, sd = 1000, n = length(id)),2)
+benefitsMedicalWomen = NULL
 for(i in 1:length(id)){
-  benefitsMedicalAttempt[[i]] = npv(r = .03, rep(medicalCostsAttempt[[i]], timeClients[[i]]))
+  benefitsMedicalWomen[[i]] = npv(r = .03, rep(medicalCostsWomen[[i]], timeClients[[i]]))
 }
-benefitsMedicalRate = sum(benefitsMedicalRate); benefitsMedicalRate
+benefitsMedicalWomen = sum(benefitsMedicalWomen)
 
 
-totalBenefits = sum(benefitsWagesRate, benefitsWagesAttempt, benefitsMedicalAttempt, benefitsMedicalRate)
-```
-So now get the program costs.  Assume a therapists makes about $50,000
-So we have length(id) therapists, then they make distibution around $50,000 for timeClient
-```{r}
+totalBenefits = sum(benefitsWagesRate, benefitsWagesAttempt, benefitsMedicalWomen, benefitsMedicalMen)
+
+# So now get the program costs.  Assume a therapists makes about $50,000
+# So we have length(id) therapists, then they make distibution around $50,000 for timeClient
 therpWage = rnorm(mean = 50000, sd = 2000, n = length(id))
-therpWage
 
 costsTherpWage = NULL
 for(i in 1:length(id)){
   costsTherpWage[[i]] = npv(r = .03, rep(therpWage[[i]], timeClients[[i]]))
 }
-costsTherpWage = sum(costsTherpWage); costsTherpWage
+costsTherpWage = sum(costsTherpWage)
+
+#Now get the BCA ratio 
+BCARatio =  totalBenefits/costsTherpWage
+BCARatio
+}
+BCAdatGen()
 ```
-Now get the BCA ratio 
+
+
+Now get a confidence interval for BCA ratio
 ```{r}
-totalBenefits/costsTherpWage
+n = 100
+BCARatioValues = replicate(10, BCAdatGen())
+BCARatioValues
+BCARatioValuesMean = mean(BCARatioValues, na.rm = TRUE)
+BCARatioValuesSE = 2*sd(BCARatioValues, na.rm = TRUE)/sqrt(n)
+ciBCA = data.frame(UpperC = BCARatioValuesMean+BCARatioValuesSE, LowerC = BCARatioValuesMean-BCARatioValuesSE)
+round(ciBCA,0)
 ```
-
-
-
-
-
-
-
-
